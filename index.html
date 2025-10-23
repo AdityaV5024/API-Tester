@@ -1,133 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bullion Live Rates</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  body { background-color: #0d1117; color: #e6edf3; font-family: 'Inter', sans-serif; }
-  .price-up { color: #22c55e; transition: color 0.4s; }
-  .price-down { color: #ef4444; transition: color 0.4s; }
-  .btn { background-color: #1f2937; color: #e6edf3; border: 1px solid #374151; border-radius: 8px; padding: 4px 10px; cursor: pointer; }
-  .btn:hover { background-color: #374151; }
-  table { border-collapse: collapse; width: 100%; min-width: 700px; }
-  th, td { padding: 8px 6px; border-bottom: 1px solid #2d3748; text-align: center; font-size: 0.875rem; }
-  a.api-link { 
-    color: inherit;       /* use normal text color */
-    text-decoration: none; /* remove underline */
-    cursor: pointer;       /* keep it clickable */
-  }
-  @media (min-width: 640px) {
-    th, td { padding: 10px 8px; font-size: 1rem; }
-  }
-</style>
-</head>
-<body class="p-4 sm:p-6">
-<h1 class="text-xl sm:text-2xl font-bold mb-4 text-center text-yellow-400">
-  <a href="https://docs.google.com/spreadsheets/d/1p0q5IR0vSvC6LzZay4gY0VZv5PCT26xO1nGip4OVqBw/edit?usp=drivesdk" 
-     target="_blank" 
-     class="text-yellow-400 hover:underline">
-    Live Bullion Rates Dashboard
-  </a>
-</h1>
-
-
-<div class="overflow-x-auto">
-  <table id="ratesTable" class="min-w-full text-sm sm:text-base">
-    <thead class="bg-gray-800 text-gray-200">
-      <tr>
-        <th>Dealer</th>
-        <th>Gold MCX</th>
-        <th>Silver MCX</th>
-        <th>Gold ($)</th>
-        <th>Silver ($)</th>
-        <th>USD→INR</th>
-        <th>Template</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="ratesBody"></tbody>
-  </table>
-</div>
-
-<script>
-const apiListUrl = "https://script.google.com/macros/s/AKfycbx-6IteUWL3QtLL60Os5oxaOmHOYu6u8CRuTyabfqVBdNB0Y7p5b0wj_31deO_nZvvu/exec?action=getLink";
-
-async function fetchApiList() {
-  const res = await fetch(apiListUrl);
-  const data = await res.json();
-  const tbody = document.getElementById("ratesBody");
-  tbody.innerHTML = "";
-
-  data.forEach(site => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td class="font-semibold text-yellow-400 whitespace-nowrap"><a href="${site.website}" target="_blank" class="api-link">${site.name}</a></td>
-      <td id="${site.name}-goldMCX"><a href="${site.goldFutureMCX}" target="_blank" class="api-link">-</a></td>
-      <td id="${site.name}-silverMCX"><a href="${site.silverFutureMCX}" target="_blank" class="api-link">-</a></td>
-      <td id="${site.name}-goldUSD"><a href="${site.goldUSD}" target="_blank" class="api-link">-</a></td>
-      <td id="${site.name}-silverUSD"><a href="${site.silverUSD}" target="_blank" class="api-link">-</a></td>
-      <td id="${site.name}-inr"><a href="${site.usdToInr}" target="_blank" class="api-link">-</a></td>
-      <td><a href="${site.template}" target="_blank" class="api-link">Template</a></td>
-      <td><button class="btn" onclick="updateRates('${site.name}', ${JSON.stringify(site).replace(/"/g, '&quot;')})">Update</button></td>
-    `;
-    tbody.appendChild(row);
-  });
-
-  // First automatic update for all
-  data.forEach(site => updateRates(site.name, site));
-}
-
-async function parseXMLText(url) {
-  const text = await fetch(url).then(r => r.text());
-  const parts = text.trim().split(/\s+/);
-  return parts.map(v => v.trim()).filter(v => v);
-}
-
-async function updateRates(name, site) {
-  try {
-    const goldMCX = await parseXMLText(site.goldFutureMCX);
-    const silverMCX = await parseXMLText(site.silverFutureMCX);
-    const goldUSD = await parseXMLText(site.goldUSD);
-    const silverUSD = await parseXMLText(site.silverUSD);
-    const inr = await parseXMLText(site.usdToInr);
-
-    document.querySelector(`#${name}-goldMCX a`).textContent = `${goldMCX[3]} / ${goldMCX[4]}`;
-    document.querySelector(`#${name}-silverMCX a`).textContent = `${silverMCX[3]} / ${silverMCX[4]}`;
-    document.querySelector(`#${name}-goldUSD a`).textContent = `${goldUSD[3]}`;
-    document.querySelector(`#${name}-silverUSD a`).textContent = `${silverUSD[3]}`;
-    document.querySelector(`#${name}-inr a`).textContent = `${inr[3]}`;
-
-    // Color changes
-    updateColor(`#${name}-goldMCX a`, goldMCX[3]);
-    updateColor(`#${name}-silverMCX a`, silverMCX[3]);
-    updateColor(`#${name}-goldUSD a`, goldUSD[3]);
-    updateColor(`#${name}-silverUSD a`, silverUSD[3]);
-    updateColor(`#${name}-inr a`, inr[3]);
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-function updateColor(selector, newValue) {
-  const el = document.querySelector(selector);
-  if (!el) return;
-  const oldValue = parseFloat(el.dataset.old) || 0;
-  el.dataset.old = newValue;
-
-  if (oldValue) {
-    if (newValue > oldValue) {
-      el.classList.add("price-up");
-      el.classList.remove("price-down");
-    } else if (newValue < oldValue) {
-      el.classList.add("price-down");
-      el.classList.remove("price-up");
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bullion Live Rates</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #0d1117;
+      color: #e6edf3;
+      font-family: 'Inter', sans-serif;
     }
-  }
-}
 
-fetchApiList();
-</script>
+    .flash-up {
+      color: #22c55e !important;
+      transition: color 0.3s ease;
+    }
+
+    .flash-down {
+      color: #ef4444 !important;
+      transition: color 0.3s ease;
+    }
+
+    .btn {
+      background-color: #1f2937;
+      color: #e6edf3;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 750px;
+    }
+
+    th,
+    td {
+      padding: 8px 6px;
+      border-bottom: 1px solid #2d3748;
+      text-align: center;
+      font-size: 0.875rem;
+    }
+
+    a.api-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    @media (min-width: 640px) {
+      th,
+      td {
+        padding: 10px 8px;
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+
+<body class="p-4 sm:p-6">
+  <h1 class="text-xl sm:text-2xl font-bold mb-4 text-center text-yellow-400">
+    <a href="https://docs.google.com/spreadsheets/d/1p0q5IR0vSvC6LzZay4gY0VZv5PCT26xO1nGip4OVqBw/edit?usp=drivesdk"
+      target="_blank" class="text-yellow-400 hover:underline">
+      Live Bullion Rates Dashboard
+    </a>
+  </h1>
+
+  <div class="overflow-x-auto">
+    <table id="ratesTable" class="min-w-full text-sm sm:text-base">
+      <thead class="bg-gray-800 text-gray-200">
+        <tr>
+          <th>Dealer</th>
+          <th>Gold MCX<br>(Buy / Sell / Low / High)</th>
+          <th>Silver MCX<br>(Buy / Sell / Low / High)</th>
+          <th>Gold ($)</th>
+          <th>Silver ($)</th>
+          <th>USD→INR</th>
+          <th>Template</th>
+        </tr>
+      </thead>
+      <tbody id="ratesBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const apiListUrl = "https://script.google.com/macros/s/AKfycbx-6IteUWL3QtLL60Os5oxaOmHOYu6u8CRuTyabfqVBdNB0Y7p5b0wj_31deO_nZvvu/exec?action=getLink";
+
+    async function fetchApiList() {
+      const res = await fetch(apiListUrl);
+      const data = await res.json();
+      const tbody = document.getElementById("ratesBody");
+      tbody.innerHTML = "";
+
+      data.forEach(site => {
+        const nameID = site.name.replace(/\s+/g, '');
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td class="font-semibold text-yellow-400 whitespace-nowrap">
+            <a href="${site.website}" target="_blank" class="api-link">${site.name}</a>
+          </td>
+          <td id="${nameID}-goldMCX"><a href="${site.goldFutureMCX}" target="_blank" class="api-link">-</a></td>
+          <td id="${nameID}-silverMCX"><a href="${site.silverFutureMCX}" target="_blank" class="api-link">-</a></td>
+          <td id="${nameID}-goldUSD"><a href="${site.goldUSD}" target="_blank" class="api-link">-</a></td>
+          <td id="${nameID}-silverUSD"><a href="${site.silverUSD}" target="_blank" class="api-link">-</a></td>
+          <td id="${nameID}-inr"><a href="${site.usdToInr}" target="_blank" class="api-link">-</a></td>
+          <td><a href="${site.template}" target="_blank" class="api-link text-blue-400 hover:underline">Template</a></td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      // Auto update every second
+      setInterval(() => {
+        data.forEach(site => updateRates(site.name, site));
+      }, 1000);
+    }
+
+    async function parseXMLText(url) {
+      const text = await fetch(url).then(r => r.text());
+      const parts = text.trim().split(/\s+/);
+      return parts.map(v => v.trim()).filter(v => v);
+    }
+
+    async function updateRates(name, site) {
+      try {
+        const goldMCX = await parseXMLText(site.goldFutureMCX);
+        const silverMCX = await parseXMLText(site.silverFutureMCX);
+        const goldUSD = await parseXMLText(site.goldUSD);
+        const silverUSD = await parseXMLText(site.silverUSD);
+        const inr = await parseXMLText(site.usdToInr);
+
+        // Extract 4 biggest numbers > 1 lakh
+        const getBigNumbers = arr =>
+          arr.map(x => parseFloat(x)).filter(x => !isNaN(x) && x > 100000).slice(0, 4);
+
+        const [goldBuy, goldSell, goldLow, goldHigh] = getBigNumbers(goldMCX);
+        const [silverBuy, silverSell, silverLow, silverHigh] = getBigNumbers(silverMCX);
+
+        const nameID = name.replace(/\s+/g, '');
+
+        updateValue(`#${nameID}-goldMCX a`, `${goldBuy} / ${goldSell} / ${goldLow} / ${goldHigh}`);
+        updateValue(`#${nameID}-silverMCX a`, `${silverBuy} / ${silverSell} / ${silverLow} / ${silverHigh}`);
+        updateValue(`#${nameID}-goldUSD a`, goldUSD[3]);
+        updateValue(`#${nameID}-silverUSD a`, silverUSD[3]);
+        updateValue(`#${nameID}-inr a`, inr[3]);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function updateValue(selector, newValue) {
+      const el = document.querySelector(selector);
+      if (!el) return;
+
+      const oldValue = parseFloat(el.dataset.old) || 0;
+      const numericNew = parseFloat(newValue.toString().split('/')[0]) || 0;
+      el.dataset.old = numericNew;
+
+      el.textContent = newValue;
+
+      if (oldValue) {
+        if (numericNew > oldValue) flashColor(el, "flash-up");
+        else if (numericNew < oldValue) flashColor(el, "flash-down");
+      }
+    }
+
+    function flashColor(el, className) {
+      el.classList.add(className);
+      setTimeout(() => {
+        el.classList.remove(className);
+        el.style.color = "#e6edf3";
+      }, 500);
+    }
+
+    fetchApiList();
+  </script>
 </body>
+
 </html>
