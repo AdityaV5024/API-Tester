@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Template Viewer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #0d1117;
+      color: #e6edf3;
+      font-family: 'Inter', sans-serif;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #374151;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #1f2937;
+      color: #facc15;
+    }
+    tr:nth-child(even) {
+      background-color: #111827;
+    }
+  </style>
+</head>
+<body class="p-4">
+  <h1 class="text-2xl font-bold text-center text-yellow-400 mb-4">Template Preview</h1>
+  <div id="templateContainer" class="overflow-x-auto"></div>
+
+  <script>
+    async function loadTemplate() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const url = urlParams.get("url");
+      if (!url) {
+        document.body.innerHTML = "<p class='text-center text-red-400'>No template URL provided.</p>";
+        return;
+      }
+
+      try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const rows = text.trim().split("\n").map(r => r.split(","));
+        const table = document.createElement("table");
+
+        const thead = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        rows[0].forEach(cell => {
+          const th = document.createElement("th");
+          th.textContent = cell;
+          headRow.appendChild(th);
+        });
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        rows.slice(1).forEach(row => {
+          const tr = document.createElement("tr");
+          row.forEach(cell => {
+            const td = document.createElement("td");
+            td.textContent = cell;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        document.getElementById("templateContainer").appendChild(table);
+      } catch (err) {
+        document.body.innerHTML = "<p class='text-center text-red-400'>Failed to load template.</p>";
+        console.error(err);
+      }
+    }
+    loadTemplate();
+  </script>
+</body>
+</html>
