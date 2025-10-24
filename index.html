@@ -2,8 +2,8 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bullion Live Rates</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -28,8 +28,12 @@
       color: #e6edf3;
       border: 1px solid #374151;
       border-radius: 8px;
-      padding: 4px 10px;
+      padding: 6px 12px;
       cursor: pointer;
+    }
+
+    .btn:hover {
+      background-color: #374151;
     }
 
     table {
@@ -52,6 +56,16 @@
       cursor: pointer;
     }
 
+    .member-link {
+      color: #3b82f6;
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    .member-link:hover {
+      color: #60a5fa;
+    }
+
     @media (min-width: 640px) {
       th,
       td {
@@ -63,12 +77,16 @@
 </head>
 
 <body class="p-4 sm:p-6">
-  <h1 class="text-xl sm:text-2xl font-bold mb-4 text-center text-yellow-400">
+  <h1 class="text-xl sm:text-2xl font-bold mb-2 text-center text-yellow-400">
     <a href="https://docs.google.com/spreadsheets/d/1p0q5IR0vSvC6LzZay4gY0VZv5PCT26xO1nGip4OVqBw/edit?usp=drivesdk"
       target="_blank" class="text-yellow-400 hover:underline">
       Live Bullion Rates Dashboard
     </a>
   </h1>
+
+  <div class="text-center mb-4">
+    <button class="btn" onclick="window.open(apiListUrl, '_blank')">📄 View Script API JSON</button>
+  </div>
 
   <div class="overflow-x-auto">
     <table id="ratesTable" class="min-w-full text-sm sm:text-base">
@@ -88,7 +106,8 @@
   </div>
 
   <script>
-    const apiListUrl = "https://script.google.com/macros/s/AKfycbx-6IteUWL3QtLL60Os5oxaOmHOYu6u8CRuTyabfqVBdNB0Y7p5b0wj_31deO_nZvvu/exec?action=getLink";
+    const apiListUrl =
+      "https://script.google.com/macros/s/AKfycbx-6IteUWL3QtLL60Os5oxaOmHOYu6u8CRuTyabfqVBdNB0Y7p5b0wj_31deO_nZvvu/exec?action=getLink";
 
     async function fetchApiList() {
       const res = await fetch(apiListUrl);
@@ -96,8 +115,8 @@
       const tbody = document.getElementById("ratesBody");
       tbody.innerHTML = "";
 
-      data.forEach(site => {
-        const nameID = site.name.replace(/\s+/g, '');
+      data.forEach((site) => {
+        const nameID = site.name.replace(/\s+/g, "");
         const row = document.createElement("tr");
         row.innerHTML = `
           <td class="font-semibold text-yellow-400 whitespace-nowrap">
@@ -108,21 +127,24 @@
           <td id="${nameID}-goldUSD"><a href="${site.goldUSD}" target="_blank" class="api-link">-</a></td>
           <td id="${nameID}-silverUSD"><a href="${site.silverUSD}" target="_blank" class="api-link">-</a></td>
           <td id="${nameID}-inr"><a href="${site.usdToInr}" target="_blank" class="api-link">-</a></td>
-          <td><a href="${site.template}" target="_blank" class="api-link text-blue-400 hover:underline">Template</a></td>
+          <td>
+            <a href="template.html?url=${encodeURIComponent(site.template)}"
+              class="member-link">View Template</a>
+          </td>
         `;
         tbody.appendChild(row);
       });
 
       // Auto update every second
       setInterval(() => {
-        data.forEach(site => updateRates(site.name, site));
+        data.forEach((site) => updateRates(site.name, site));
       }, 1000);
     }
 
     async function parseXMLText(url) {
-      const text = await fetch(url).then(r => r.text());
+      const text = await fetch(url).then((r) => r.text());
       const parts = text.trim().split(/\s+/);
-      return parts.map(v => v.trim()).filter(v => v);
+      return parts.map((v) => v.trim()).filter((v) => v);
     }
 
     async function updateRates(name, site) {
@@ -133,14 +155,13 @@
         const silverUSD = await parseXMLText(site.silverUSD);
         const inr = await parseXMLText(site.usdToInr);
 
-        // Extract 4 biggest numbers > 1 lakh
-        const getBigNumbers = arr =>
-          arr.map(x => parseFloat(x)).filter(x => !isNaN(x) && x > 100000).slice(0, 4);
+        const getBigNumbers = (arr) =>
+          arr.map((x) => parseFloat(x)).filter((x) => !isNaN(x) && x > 100000).slice(0, 4);
 
-        const [goldBuy, goldSell, goldLow, goldHigh] = getBigNumbers(goldMCX);
-        const [silverBuy, silverSell, silverLow, silverHigh] = getBigNumbers(silverMCX);
+        const [goldBuy, goldSell, goldHigh, goldLow] = getBigNumbers(goldMCX);
+        const [silverBuy, silverSell, silverHigh, silverLow] = getBigNumbers(silverMCX);
 
-        const nameID = name.replace(/\s+/g, '');
+        const nameID = name.replace(/\s+/g, "");
 
         updateValue(`#${nameID}-goldMCX a`, `${goldBuy} / ${goldSell} / ${goldLow} / ${goldHigh}`);
         updateValue(`#${nameID}-silverMCX a`, `${silverBuy} / ${silverSell} / ${silverLow} / ${silverHigh}`);
@@ -155,11 +176,9 @@
     function updateValue(selector, newValue) {
       const el = document.querySelector(selector);
       if (!el) return;
-
       const oldValue = parseFloat(el.dataset.old) || 0;
-      const numericNew = parseFloat(newValue.toString().split('/')[0]) || 0;
+      const numericNew = parseFloat(newValue.toString().split("/")[0]) || 0;
       el.dataset.old = numericNew;
-
       el.textContent = newValue;
 
       if (oldValue) {
